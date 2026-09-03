@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
                 title = "Task Management Service API",
                 version = "v1",
                 description = "REST API for managing users, projects and tasks",
-                contact = @Contact(name = "Task Management Team", email = "support@example.com"),
+                contact = @Contact(name = "Task Management Team", email = "marinellys.figueroa@gmail.com"),
                 license = @License(name = "Apache 2.0")
         ),
         security = @SecurityRequirement(name = "basicAuth")

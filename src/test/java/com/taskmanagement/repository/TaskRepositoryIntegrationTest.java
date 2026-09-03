@@ -44,8 +44,8 @@ class TaskRepositoryIntegrationTest extends AbstractIntegrationTest {
                 .assignee(assignee)
                 .build());
 
-        List<Task> tasksForProject = taskRepository.findByProjectId(project.getId());
-        List<Task> tasksForAssignee = taskRepository.findByAssigneeId(assignee.getId());
+        List<Task> tasksForProject = taskRepository.findByProject_Id(project.getId());
+        List<Task> tasksForAssignee = taskRepository.findByAssignee_Id(assignee.getId());
 
         assertThat(tasksForProject).hasSize(1).extracting(Task::getId).containsExactly(task.getId());
         assertThat(tasksForAssignee).hasSize(1).extracting(Task::getId).containsExactly(task.getId());

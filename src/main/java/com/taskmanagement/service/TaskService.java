@@ -60,11 +60,11 @@ public class TaskService {
     }
 
     public List<TaskResponseDto> getTasksByProject(Long projectId) {
-        return taskRepository.findByProjectId(projectId).stream().map(this::toResponseDto).toList();
+        return taskRepository.findByProject_Id(projectId).stream().map(this::toResponseDto).toList();
     }
 
     public List<TaskResponseDto> getTasksByAssignee(Long assigneeId) {
-        return taskRepository.findByAssigneeId(assigneeId).stream().map(this::toResponseDto).toList();
+        return taskRepository.findByAssignee_Id(assigneeId).stream().map(this::toResponseDto).toList();
     }
 
     public List<TaskResponseDto> getTasksByStatus(TaskStatus status) {
