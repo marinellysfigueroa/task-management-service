@@ -1,7 +1,5 @@
 package com.taskmanagement.integration;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -25,14 +23,21 @@ public abstract class AbstractIntegrationTest {
                     .withUsername("test_user")
                     .withPassword("test_password");
 
-    @BeforeAll
-    static void startContainer() {
+    static {
+        // Singleton container pattern: started once per JVM from a static
+        // initializer, and deliberately never stopped.
+        //
+        // The previous @BeforeAll/@AfterAll pair looked symmetric but could not
+        // work with more than one test class. Spring caches the ApplicationContext
+        // across classes that share this configuration, while @DynamicPropertySource
+        // is evaluated only when that context is first created. Stopping the
+        // container in @AfterAll therefore left the cached DataSource pointing at a
+        // destroyed container (the restart gets a fresh random port), and every
+        // class after the first failed to connect.
+        //
+        // Ryuk, Testcontainers' reaper sidecar, removes the container when the JVM
+        // exits, so skipping the explicit stop() leaks nothing.
         POSTGRES.start();
-    }
-
-    @AfterAll
-    static void stopContainer() {
-        POSTGRES.stop();
     }
 
     @DynamicPropertySource

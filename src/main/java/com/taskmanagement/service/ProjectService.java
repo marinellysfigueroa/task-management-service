@@ -1,75 +1,41 @@
 package com.taskmanagement.service;
 
+import com.taskmanagement.dto.PageResponse;
+import com.taskmanagement.dto.ProjectPatchDto;
 import com.taskmanagement.dto.ProjectRequestDto;
 import com.taskmanagement.dto.ProjectResponseDto;
-import com.taskmanagement.exception.ResourceNotFoundException;
-import com.taskmanagement.model.Project;
-import com.taskmanagement.repository.ProjectRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Pageable;
 
-import java.util.List;
+/**
+ * Use cases available for projects.
+ *
+ * <p>Design decision: the controller depends on this interface, not on the
+ * implementation (DIP). The abstraction is defined in terms the caller cares
+ * about — DTOs in, DTOs out, never entities — so the transaction and persistence
+ * details stay behind it, and an alternative implementation (a caching
+ * decorator, a read-model backed one) can be substituted without touching the
+ * web layer.
+ */
+public interface ProjectService {
 
-@Service
-@RequiredArgsConstructor
-@Transactional(readOnly = true)
-public class ProjectService {
+    ProjectResponseDto create(ProjectRequestDto request);
 
-    private final ProjectRepository projectRepository;
+    ProjectResponseDto findById(Long id);
 
-    @Transactional
-    public ProjectResponseDto createProject(ProjectRequestDto request) {
-        Project project = Project.builder()
-                .name(request.getName())
-                .description(request.getDescription())
-                .ownerId(request.getOwnerId())
-                .build();
+    /**
+     * @param ownerId optional filter; {@code null} returns projects for all owners
+     */
+    PageResponse<ProjectResponseDto> findAll(Long ownerId, Pageable pageable);
 
-        return toResponseDto(projectRepository.save(project));
-    }
+    /** Full replacement (PUT): every writable field is overwritten. */
+    ProjectResponseDto replace(Long id, ProjectRequestDto request);
 
-    public ProjectResponseDto getProjectById(Long id) {
-        return toResponseDto(findProjectOrThrow(id));
-    }
+    /** Partial update (PATCH): only non-null fields of {@code patch} are applied. */
+    ProjectResponseDto patch(Long id, ProjectPatchDto patch);
 
-    public List<ProjectResponseDto> getAllProjects() {
-        return projectRepository.findAll().stream().map(this::toResponseDto).toList();
-    }
-
-    public List<ProjectResponseDto> getProjectsByOwner(Long ownerId) {
-        return projectRepository.findByOwnerId(ownerId).stream().map(this::toResponseDto).toList();
-    }
-
-    @Transactional
-    public ProjectResponseDto updateProject(Long id, ProjectRequestDto request) {
-        Project project = findProjectOrThrow(id);
-        project.setName(request.getName());
-        project.setDescription(request.getDescription());
-        project.setOwnerId(request.getOwnerId());
-        return toResponseDto(project);
-    }
-
-    @Transactional
-    public void deleteProject(Long id) {
-        if (!projectRepository.existsById(id)) {
-            throw ResourceNotFoundException.of("Project", id);
-        }
-        projectRepository.deleteById(id);
-    }
-
-    protected Project findProjectOrThrow(Long id) {
-        return projectRepository.findById(id)
-                .orElseThrow(() -> ResourceNotFoundException.of("Project", id));
-    }
-
-    private ProjectResponseDto toResponseDto(Project project) {
-        return ProjectResponseDto.builder()
-                .id(project.getId())
-                .name(project.getName())
-                .description(project.getDescription())
-                .ownerId(project.getOwnerId())
-                .createdAt(project.getCreatedAt())
-                .build();
-    }
+    /**
+     * @param cascade when false, deleting a project that still owns tasks is
+     *                rejected with a conflict instead of silently removing them
+     */
+    void delete(Long id, boolean cascade);
 }
