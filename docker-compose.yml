@@ -33,6 +33,8 @@ services:
       DB_NAME: ${DB_NAME:-task_management}
       DB_USERNAME: ${DB_USERNAME:-task_user}
       DB_PASSWORD: ${DB_PASSWORD:-task_password}
+      JWT_SECRET: ${JWT_SECRET:-7rAVNtHkuy3lZ9fhDFHXgACpPLgzkmkKC8DGyOhAWTI=}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-60}
     ports:
       - "8080:8080"
 

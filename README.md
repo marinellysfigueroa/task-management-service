@@ -176,14 +176,66 @@ Activate a profile with `SPRING_PROFILES_ACTIVE` (defaults to `local`).
 
 ## Security
 
-HTTP Basic authentication backed by the `users` table (`CustomUserDetailsService`).
+Stateless authentication with JWT (HS256), backed by the `users` table
+(`CustomUserDetailsService`) and Spring Security 6's `SecurityFilterChain` bean
+— no `WebSecurityConfigurerAdapter`, which has been removed as of Spring
+Security 6.
 
-- `POST /api/v1/users` is open (self-registration).
-- `DELETE` on `/api/v1/users/**` and `/api/v1/projects/**` requires the `ADMIN` role.
-- All other endpoints require an authenticated user.
-- Swagger UI and `/actuator/health` are public.
+### Auth endpoints (public, `/api/v1/auth/**`)
+
+| Method | Path                    | Notes |
+|--------|-------------------------|-------|
+| `POST` | `/api/v1/auth/register` | Always creates a `USER` account — no `role` field accepted; returns a token immediately |
+| `POST` | `/api/v1/auth/login`    | Verifies credentials, returns a token |
+
+Every other endpoint requires `Authorization: Bearer <accessToken>`.
+
+### Roles and `@PreAuthorize`
+
+Role checks live as `@PreAuthorize` next to the method they guard, not as URL
+rules in `SecurityConfig` — `authorizeHttpRequests` only draws the
+public/authenticated line:
+
+- `UserController` — every endpoint requires `ADMIN` (class-level
+  `@PreAuthorize`). This is where an admin creates an account with an arbitrary
+  role, since `POST /api/v1/auth/register` deliberately cannot.
+- `ProjectController.delete` — requires `ADMIN`.
+- Everything else just requires an authenticated user (any role).
+
+### Token validation (`JwtAuthenticationFilter`)
+
+An `OncePerRequestFilter` reads `Authorization: Bearer <token>`, verifies
+signature/issuer/expiry, and re-loads the user's authorities from the database
+on every request rather than trusting the token's own `role` claim — a role
+change or account deletion then takes effect immediately instead of only once
+the (short-lived) token expires.
+
+### 401 vs 403
+
+Both render as `application/problem+json` (see the [Errors](#errors-rfc-7807)
+section), but mean different things:
+
+- **401** (`.../problems/unauthorized`) — no valid identity at all: missing
+  token, expired token, malformed token, or bad login credentials.
+- **403** (`.../problems/access-denied`) — a real, valid identity that is not
+  allowed to do this specific thing (an authenticated `USER` hitting an
+  `ADMIN`-only endpoint).
+
+### Configuration
+
+| Variable                 | Purpose                                   | Default |
+|---------------------------|--------------------------------------------|---------|
+| `JWT_SECRET`               | Base64-encoded HS256 signing key (≥ 32 bytes) | Dev-only key baked into `application.yml`; **the `aws` profile has no default and refuses to start without it** |
+| `JWT_EXPIRATION_MINUTES`   | Token lifetime                              | `60` |
 
 Passwords are hashed with BCrypt.
+
+### Trying it out
+
+`api-requests.http` at the repo root walks through register → login →
+authenticated call → 403 vs 401 using IntelliJ's built-in HTTP Client (Preferences
+> Plugins > HTTP Client). In Swagger UI, the "Authorize" button takes the raw
+token (no `Bearer` prefix — Swagger adds it).
 
 ## Tests
 

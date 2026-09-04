@@ -60,7 +60,7 @@ class ProjectControllerTest {
     private ObjectMapper objectMapper;
 
     @MockBean
-private final ProjectService projectService = null;
+    private ProjectService projectService;
 
     @Test
     void shouldCreateProjectAndReturnLocationHeader() throws Exception {

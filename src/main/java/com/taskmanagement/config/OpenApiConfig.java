@@ -51,9 +51,12 @@ import org.springframework.context.annotation.Configuration;
                         identifier for the problem category and is the field to branch on;
                         validation failures additionally carry a structured `errors` array.
 
-                        **Authentication** — HTTP Basic. Creating a user (`POST /api/v1/users`)
-                        and the Swagger/actuator endpoints are public; everything else requires
-                        credentials, and a few destructive operations require the ADMIN role.
+                        **Authentication** — stateless JWT. `POST /api/v1/auth/register` and
+                        `POST /api/v1/auth/login` are public and return an access token; send it
+                        back as `Authorization: Bearer <token>` on every other call. Swagger UI's
+                        "Authorize" button accepts just the raw token (no `Bearer` prefix).
+                        A handful of operations additionally require the ADMIN role, enforced
+                        with `@PreAuthorize` next to the method they guard.
                         """,
                 contact = @Contact(name = "Task Management Team", email = "marinellys.figueroa@gmail.com"),
                 license = @License(name = "Apache 2.0", url = "https://www.apache.org/licenses/LICENSE-2.0")
@@ -62,17 +65,19 @@ import org.springframework.context.annotation.Configuration;
                 @Server(url = "http://localhost:8080", description = "Local development")
         },
         tags = {
+                @Tag(name = "Auth", description = "Registration and login; issues the JWT used by every other endpoint"),
                 @Tag(name = "Projects", description = "Create, query and maintain projects"),
                 @Tag(name = "Tasks", description = "Create, query and maintain tasks"),
-                @Tag(name = "Users", description = "User management endpoints")
+                @Tag(name = "Users", description = "User management endpoints (ADMIN only)")
         },
-        security = @SecurityRequirement(name = "basicAuth")
+        security = @SecurityRequirement(name = "bearerAuth")
 )
 @SecurityScheme(
-        name = "basicAuth",
+        name = "bearerAuth",
         type = SecuritySchemeType.HTTP,
-        scheme = "basic",
-        description = "HTTP Basic credentials of a registered user"
+        scheme = "bearer",
+        bearerFormat = "JWT",
+        description = "Access token returned by POST /api/v1/auth/login or /register"
 )
 public class OpenApiConfig {
 }

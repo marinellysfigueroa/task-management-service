@@ -162,6 +162,57 @@ public final class ApiExamples {
             """;
 
     // ------------------------------------------------------------------
+    // Auth
+    // ------------------------------------------------------------------
+
+    public static final String AUTH_REGISTER_REQUEST = """
+            {
+              "username": "mfigueroa",
+              "email": "marinellys.figueroa@gmail.com",
+              "password": "S3curePass!23"
+            }
+            """;
+
+    public static final String AUTH_LOGIN_REQUEST = """
+            {
+              "username": "mfigueroa",
+              "password": "S3curePass!23"
+            }
+            """;
+
+    public static final String AUTH_RESPONSE = """
+            {
+              "accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJtZmlndWVyb2EiLCJyb2xlIjoiVVNFUiJ9.dQw4w9WgXcQ",
+              "tokenType": "Bearer",
+              "expiresInSeconds": 3600,
+              "username": "mfigueroa",
+              "role": "USER"
+            }
+            """;
+
+    public static final String PROBLEM_INVALID_CREDENTIALS = """
+            {
+              "type": "https://api.taskmanagement.com/problems/unauthorized",
+              "title": "Unauthorized",
+              "status": 401,
+              "detail": "Invalid username or password",
+              "instance": "/api/v1/auth/login",
+              "timestamp": "2026-09-03T10:15:30.123Z"
+            }
+            """;
+
+    public static final String PROBLEM_DUPLICATE_USERNAME = """
+            {
+              "type": "https://api.taskmanagement.com/problems/bad-request",
+              "title": "Invalid request",
+              "status": 400,
+              "detail": "Username already in use: mfigueroa",
+              "instance": "/api/v1/auth/register",
+              "timestamp": "2026-09-03T10:15:30.123Z"
+            }
+            """;
+
+    // ------------------------------------------------------------------
     // Problem responses (RFC 7807)
     // ------------------------------------------------------------------
 

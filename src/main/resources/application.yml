@@ -1,3 +1,12 @@
+app:
+  jwt:
+    # Dev-only default: a fixed, publicly-visible-in-this-repo secret is fine for
+    # running the app on a laptop, and is exactly why application-aws.yml removes
+    # the default and requires JWT_SECRET to be set, failing startup otherwise.
+    secret: ${JWT_SECRET:7rAVNtHkuy3lZ9fhDFHXgACpPLgzkmkKC8DGyOhAWTI=}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
+    issuer: task-management-service
+
 spring:
   application:
     name: task-management-service

@@ -62,7 +62,7 @@ class TaskControllerTest {
     private ObjectMapper objectMapper;
 
     @MockBean
-    private final TaskService taskService = org.mockito.Mockito.mock(TaskService.class);
+    private TaskService taskService;
 
     @Test
     void shouldCreateTaskAndReturnLocationHeader() throws Exception {

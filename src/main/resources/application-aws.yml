@@ -1,3 +1,10 @@
+app:
+  jwt:
+    # No default here, unlike the base application.yml: a production deployment
+    # started without JWT_SECRET set must fail at startup, not fall back to the
+    # secret checked into this repository.
+    secret: ${JWT_SECRET}
+
 spring:
   datasource:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}?sslmode=require

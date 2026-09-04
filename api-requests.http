@@ -1,0 +1,156 @@
+### Task Management Service — JWT auth flows
+### IntelliJ HTTP Client format (Preferences > Plugins > "HTTP Client" is built in).
+### Response-handler scripting (the `> {% ... %}` blocks) is an IntelliJ-specific
+### feature: it runs after each response and can stash values — here, the access
+### token — into client.global variables for reuse by later requests in this file.
+### If you're using VS Code's "REST Client" extension instead, drop those blocks
+### and paste the token into {{token}} by hand after each login.
+
+@baseUrl = http://localhost:8080/api/v1
+
+
+### 1. Register a new account (public — no token needed).
+### Always creates a USER; there is no `role` field to set here on purpose.
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "mfigueroa",
+  "email": "marinellys.figueroa@gmail.com",
+  "password": "S3curePass!23"
+}
+
+> {%
+    client.global.set("userToken", response.body.accessToken);
+    client.test("Register returns 201 with a token", function () {
+        client.assert(response.status === 201, "Expected 201, got " + response.status);
+        client.assert(!!response.body.accessToken, "Missing accessToken");
+        client.assert(response.body.role === "USER", "Expected role USER");
+    });
+%}
+
+
+### 2. Login with the same credentials (public — no token needed).
+### Not required right after register (which already returns a token), but this
+### is the call you'll make on every subsequent visit.
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "mfigueroa",
+  "password": "S3curePass!23"
+}
+
+> {%
+    client.global.set("userToken", response.body.accessToken);
+    client.test("Login returns 200 with a token", function () {
+        client.assert(response.status === 200, "Expected 200, got " + response.status);
+        client.assert(!!response.body.accessToken, "Missing accessToken");
+    });
+%}
+
+
+### 3. Login with the wrong password — 401, RFC 7807 body.
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "mfigueroa",
+  "password": "definitely-wrong"
+}
+
+> {%
+    client.test("Wrong password returns 401 problem+json", function () {
+        client.assert(response.status === 401, "Expected 401, got " + response.status);
+        client.assert(response.body.type.endsWith("/unauthorized"), "Unexpected problem type");
+    });
+%}
+
+
+### 4. Call a protected endpoint using the token captured above.
+GET {{baseUrl}}/projects
+Authorization: Bearer {{userToken}}
+
+
+### 5. Same call with no Authorization header at all — 401.
+GET {{baseUrl}}/projects
+
+
+### 6. Same call with a garbage token — 401, with a message naming the actual problem.
+GET {{baseUrl}}/projects
+Authorization: Bearer this-is-not-a-real-jwt
+
+
+### 7. Create a project as an authenticated USER — allowed.
+POST {{baseUrl}}/projects
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "name": "Platform Migration",
+  "description": "Migrate the legacy monolith to the new service platform",
+  "ownerId": 1
+}
+
+> {%
+    client.global.set("projectId", response.body.id);
+    client.test("Project created", function () {
+        client.assert(response.status === 201, "Expected 201, got " + response.status);
+    });
+%}
+
+
+### 8. Delete that project as the same USER — 403. Deletion is @PreAuthorize("hasRole('ADMIN')").
+DELETE {{baseUrl}}/projects/{{projectId}}
+Authorization: Bearer {{userToken}}
+
+> {%
+    client.test("Non-admin delete is forbidden", function () {
+        client.assert(response.status === 403, "Expected 403, got " + response.status);
+        client.assert(response.body.type.endsWith("/access-denied"), "Unexpected problem type");
+    });
+%}
+
+
+### --- The calls below need an ADMIN account. There is no public way to become
+### one (registration always creates a USER) — an existing admin has to create
+### one through POST /api/v1/users. To bootstrap the very first admin, register
+### normally through request #1 with a distinct username, then promote that row
+### directly in the database once:
+###
+###   UPDATE users SET role = 'ADMIN' WHERE username = 'mfigueroa';
+###
+### After that, every further admin can be created the "real" way, through
+### request #11 below, by someone who is already one.
+
+
+### 9. Login as the admin bootstrapped above.
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "mfigueroa",
+  "password": "S3curePass!23"
+}
+
+> {%
+    client.global.set("adminToken", response.body.accessToken);
+%}
+
+
+### 10. Delete the project as ADMIN — 204.
+DELETE {{baseUrl}}/projects/{{projectId}}
+Authorization: Bearer {{adminToken}}
+
+
+### 11. Create a MANAGER account — ADMIN-only endpoint, arbitrary role allowed.
+POST {{baseUrl}}/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "username": "newmanager",
+  "email": "newmanager@example.com",
+  "password": "S3curePass!23",
+  "role": "MANAGER"
+}

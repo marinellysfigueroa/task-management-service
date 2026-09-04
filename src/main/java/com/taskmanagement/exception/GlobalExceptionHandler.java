@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -68,6 +69,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     static final URI TYPE_CONFLICT = URI.create(PROBLEM_BASE + "conflict");
     static final URI TYPE_FORBIDDEN = URI.create(PROBLEM_BASE + "access-denied");
     static final URI TYPE_INTERNAL = URI.create(PROBLEM_BASE + "internal-error");
+    // Same URI ProblemDetailAuthenticationEntryPoint uses for filter-chain-level
+    // failures (missing/invalid token): the two paths must render identically.
+    static final URI TYPE_UNAUTHORIZED = URI.create(PROBLEM_BASE + "unauthorized");
 
     // ---------------------------------------------------------------------
     // Application exceptions
@@ -147,6 +151,29 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 HttpStatus.CONFLICT, "The request conflicts with an existing resource or a data constraint");
         problem.setType(TYPE_CONFLICT);
         problem.setTitle("Conflicting resource state");
+        return decorate(problem, request);
+    }
+
+    /**
+     * Covers {@code AuthenticationException} raised from <em>inside</em> a
+     * controller/service call — concretely, {@code AuthServiceImpl.login()}
+     * invoking {@code AuthenticationManager.authenticate(...)} with bad
+     * credentials. This is a different arrival point from
+     * {@code ProblemDetailAuthenticationEntryPoint}, which handles rejections
+     * made by the security filter chain itself (missing/invalid bearer token)
+     * before a request ever reaches a controller; both render the same
+     * {@code unauthorized} problem type so callers see one contract either way.
+     *
+     * <p>Without this handler the exception would fall through to
+     * {@link #handleUnexpected}, since {@code AuthenticationException} is a
+     * plain {@code Exception} and no more specific handler would match — turning
+     * a wrong password into a 500 instead of a 401.
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ProblemDetail handleAuthenticationException(AuthenticationException ex, WebRequest request) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        problem.setType(TYPE_UNAUTHORIZED);
+        problem.setTitle("Unauthorized");
         return decorate(problem, request);
     }
 
